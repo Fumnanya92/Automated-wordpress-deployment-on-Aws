@@ -1,0 +1,1 @@
+# Automated-wordpress-deployment-on-Aws
