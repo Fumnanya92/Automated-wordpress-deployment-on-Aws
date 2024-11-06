@@ -45,3 +45,21 @@ variable "availability_zone_2" {
   type        = string
   default     = "us-west-2b"
 }
+
+variable "db_name" {
+  description = "The database name for WordPress"
+  type        = string
+  default     = "wordpress_db"
+}
+
+variable "db_username" {
+  description = "The master username for the RDS instance"
+  type        = string
+  default     = "admin"
+}
+
+variable "db_password" {
+  description = "The master password for the RDS instance"
+  type        = string
+  sensitive   = true
+}

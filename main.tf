@@ -11,3 +11,14 @@ module "vpc" {
   availability_zone_2   = var.availability_zone_2
 }
 
+module "rds" {
+  source              = "./modules/rds"
+  allocated_storage   = 20
+  engine_version      = "8.0"
+  instance_class      = "db.t3.micro"
+  db_name             = var.db_name
+  username            = var.db_username
+  password            = var.db_password
+  allowed_cidr_blocks = [module.vpc.vpc_cidr_block]
+  private_subnet_ids  = module.vpc.private_subnet_ids
+}
