@@ -1,7 +1,3 @@
-Here's a detailed markdown document for your project:
-
----
-
 # Terraform Capstone Project: Automated WordPress Deployment on AWS
 
 ## Project Scenario
