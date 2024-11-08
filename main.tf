@@ -22,10 +22,23 @@ module "rds" {
   db_password         = var.db_password
   allowed_cidr_blocks = [module.vpc.vpc_cidr_block]
   private_subnet_ids  = module.vpc.private_subnet_ids
-  #vpc_security_group_ids = [module.vpc.vpc_id] # Ensure security groups are in the correct VPC
 }
 
+module "efs" {
+  source              = "./modules/efs"
+  subnet_ids          = module.vpc.private_subnet_ids
+  vpc_id              = module.vpc.vpc_id
+  allowed_cidr_blocks = [module.vpc.vpc_cidr_block]
+}
 
+module "ec2" {
+  source              = "./modules/ec2"
+  subnet_ids          = module.vpc.private_subnet_ids
+  vpc_id              = module.vpc.vpc_id
+  efs_id              = module.efs.efs_id
+ # allowed_cidr_blocks = [module.vpc.vpc_cidr_block]
+  db_endpoint         = module.rds.db_endpoint
+}
 
 terraform {
   backend "s3" {
