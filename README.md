@@ -405,6 +405,220 @@ Deploy a managed MySQL database using Amazon RDS to store WordPress data.
 - Set up security groups and required parameters.
 - Document Terraform commands for execution.
 
+### Step 1: Create the Directory Structure for RDS
+
+1. In the `modules` directory, create a folder named `rds`.
+   ```bash
+   mkdir -p modules/rds
+   ```
+
+2. Inside `modules/rds`, create three files:
+   - `main.tf` – for defining the RDS instance and security groups.
+   - `variables.tf` – for input variables.
+   - `outputs.tf` – for any output values that may be useful.
+
+### Step 2: Define the RDS Module Configuration
+
+#### `modules/rds/main.tf`
+
+Define the RDS instance and its security groups here.
+
+```hcl
+resource "aws_db_instance" "wordpress_rds" {
+  allocated_storage      = var.allocated_storage
+  engine                 = "mysql"
+  engine_version         = var.engine_version
+  instance_class         = var.instance_class
+  db_name                = var.db_name
+  username               = var.db_username
+  password               = var.db_password
+  parameter_group_name   = "default.mysql8.0"
+  skip_final_snapshot    = true
+  publicly_accessible    = false
+
+  # Attach the security group and subnet group
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+  db_subnet_group_name   = aws_db_subnet_group.rds_subnet.name
+}
+
+resource "aws_security_group" "rds_sg" {
+  name_prefix = "rds-sg"
+  description = "Security group for RDS MySQL instance"
+  vpc_id      = var.vpc_id  # Ensure VPC ID is passed in from main.tf
+
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_cidr_blocks
+  }
+
+  ingress {
+    from_port = 22
+    to_port =22
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_db_subnet_group" "rds_subnet" {
+  name       = "rds-subnet-group"
+  description = "Subnet group for RDS instance"
+  subnet_ids = var.private_subnet_ids
+}
+
+```
+
+#### `modules/rds/variables.tf`
+
+Define input variables for the RDS module.
+
+```hcl
+variable "allocated_storage" {
+  type        = number
+  description = "The allocated storage for the RDS instance in GB"
+  default     = 20
+}
+
+variable "engine_version" {
+  type        = string
+  description = "The MySQL engine version for the RDS instance"
+  default     = "8.0"
+}
+
+variable "instance_class" {
+  type        = string
+  description = "The instance class for the RDS instance"
+  default     = "db.t3.micro"
+}
+
+variable "allowed_cidr_blocks" {
+  type        = list(string)
+  description = "Allowed CIDR blocks for access to RDS"
+}
+
+variable "private_subnet_ids" {
+  type        = list(string)
+  description = "List of private subnet IDs for RDS deployment"
+}
+
+variable "db_name" {
+  description = "The database name for WordPress"
+  type        = string
+  default     = "wordpress_db"
+}
+
+variable "db_username" {
+  description = "The master username for the RDS instance"
+  type        = string
+  default     = "admin"
+}
+
+variable "db_password" {
+  description = "The master password for the RDS instance"
+  type        = string
+  sensitive   = true
+}
+
+variable "vpc_id" {
+  description = "The VPC ID where the RDS instance will be deployed"
+  type        = string
+}
+
+```
+
+#### `modules/rds/outputs.tf`
+
+Define outputs for use outside of the module, such as the RDS endpoint.
+
+```hcl
+output "rds_endpoint" {
+  value = aws_db_instance.wordpress_rds.endpoint
+  description = "RDS instance endpoint"
+}
+```
+
+### Step 3: Call the RDS Module from Root `main.tf`
+
+In the root `main.tf`, add a new `module` block to call the RDS module and pass in necessary variables.
+
+```hcl
+module "rds" {
+  source              = "./modules/rds"
+  vpc_id              = module.vpc.vpc_id
+  allocated_storage   = 20
+  engine_version      = "8.0"
+  instance_class      = "db.t3.micro"
+  db_name             = var.db_name
+  db_username         = var.db_username
+  db_password         = var.db_password
+  allowed_cidr_blocks = [module.vpc.vpc_cidr_block]
+  private_subnet_ids  = module.vpc.private_subnet_ids
+  #vpc_security_group_ids = [module.vpc.vpc_id] # Ensure security groups are in the correct VPC
+}
+```
+
+### Step 4: Add Database Variables in Root `variables.tf`
+
+In the root `variables.tf`, add variables for the database:
+
+```hcl
+variable "availability_zone_2" {
+  description = "Second availability zone"
+  type        = string
+  default     = "us-west-2b"
+}
+
+variable "db_name" {
+  type        = string
+  description = "The name of the database"
+}
+
+# variables.tf or terraform.tfvars
+variable "db_username" {
+  description = "The master username for the RDS instance"
+  type        = string
+  default     = "admin" # replace with your desired default, or remove this line to require input
+}
+
+variable "db_password" {
+  description = "The master password for the RDS instance"
+  type        = string
+  sensitive   = true
+}
+```
+
+### Step 5: Run the Terraform Commands
+
+After setting up the module and variables, you can initialize and apply the configuration.
+
+1. Initialize Terraform:
+   ```bash
+   terraform init
+   ```
+
+2. Validate the configuration:
+   ```bash
+   terraform validate
+   ```
+
+3. Review the plan:
+   ```bash
+   terraform plan
+   ```
+
+4. Apply the configuration:
+   ```bash
+   terraform apply
+   ```
+
 ### 4. EFS Setup for WordPress Files
 
 #### Objective
