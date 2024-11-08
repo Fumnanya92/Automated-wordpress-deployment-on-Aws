@@ -8,6 +8,11 @@ variable "vpc_id" {
   type        = string
 }
 
+variable "security_group_id" {
+  description = "Security group ID to attach to resources"
+  type        = string
+}
+
 variable "allowed_cidr_blocks" {
   description = "CIDR blocks allowed to access EFS"
   type        = list(string)

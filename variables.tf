@@ -63,3 +63,9 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "allowed_cidr_blocks" {
+  description = "CIDR blocks allowed to access EFS"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
