@@ -16,20 +16,10 @@ variable "instance_class" {
   default     = "db.t3.micro"
 }
 
-variable "db_name" {
-  type        = string
-  description = "The name of the database"
-}
-
-variable "username" {
-  type        = string
-  description = "The master username for the RDS instance"
-}
-
-variable "password" {
-  type        = string
-  description = "The master password for the RDS instance"
-}
+#variable "db_username" {
+ # type        = string
+ # description = "The master username for the RDS instance"
+#}
 
 variable "allowed_cidr_blocks" {
   type        = list(string)
@@ -39,4 +29,27 @@ variable "allowed_cidr_blocks" {
 variable "private_subnet_ids" {
   type        = list(string)
   description = "List of private subnet IDs for RDS deployment"
+}
+
+variable "db_name" {
+  description = "The database name for WordPress"
+  type        = string
+  default     = "wordpress_db"
+}
+
+variable "db_username" {
+  description = "The master username for the RDS instance"
+  type        = string
+  default     = "admin"
+}
+
+variable "db_password" {
+  description = "The master password for the RDS instance"
+  type        = string
+  sensitive   = true
+}
+
+variable "vpc_id" {
+  description = "The VPC ID where the RDS instance will be deployed"
+  type        = string
 }

@@ -47,15 +47,15 @@ variable "availability_zone_2" {
 }
 
 variable "db_name" {
-  description = "The database name for WordPress"
   type        = string
-  default     = "wordpress_db"
+  description = "The name of the database"
 }
 
+# variables.tf or terraform.tfvars
 variable "db_username" {
   description = "The master username for the RDS instance"
   type        = string
-  default     = "admin"
+  default     = "admin" # replace with your desired default, or remove this line to require input
 }
 
 variable "db_password" {
