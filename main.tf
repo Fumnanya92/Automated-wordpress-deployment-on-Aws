@@ -98,7 +98,7 @@ module "efs" {
 # EC2 Module Configuration
 module "ec2" {
   source      = "./modules/ec2"
-  subnet_ids  = module.vpc.private_subnet_ids
+  subnet_id   = module.vpc.public_subnet_1_id # Use public subnet 1 for EC2
   vpc_id      = module.vpc.vpc_id
   efs_id      = module.efs.efs_id
   db_endpoint = module.rds.rds_endpoint
