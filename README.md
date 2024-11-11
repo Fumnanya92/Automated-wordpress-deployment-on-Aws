@@ -311,28 +311,23 @@ Deploy a managed MySQL database using Amazon RDS to store WordPress data.
 
 ---
 
-### Step 1: Create the Directory Structure for RDS
+### 1. **VPC and Security Group Architecture**
 
-1. In the `modules` directory, create a folder named `rds`:
-   ```bash
-   mkdir -p modules/rds
-   ```
+   - **VPC Setup**: A VPC is created with public and private subnets across two availability zones.
+   - **NAT Gateway**: Used for outbound internet access from private subnets.
+   - **Security Groups**: Organized for access control:
+      - ALB: Open to public (Ports 80, 443).
+      - SSH: Allows SSH (Port 22) from your IP.
+      - Webserver: Allows ALB and SSH connections.
+      - RDS: Allows webserver access (Port 3306) for MySQL.
+      - EFS: Ensures webserver access (Port 2049).
 
-2. Inside `modules/rds`, create three files:
-   - `main.tf` – for defining the RDS instance and security groups.
-   - `variables.tf` – for input variables.
-   - `outputs.tf` – for any output values that may be useful.
+### 2. **Terraform Directory Structure for RDS**
 
----
-
-### Step 2: Define the RDS Module Configuration
-
-#### `modules/rds/main.tf`
-
-Define the RDS instance and its security groups:
-
-```hcl
-resource "aws_db_instance" "wordpress_rds" {
+   - Inside `modules/rds`, create:
+     - **`main.tf`**: Defines RDS instance, subnet group, and security groups.
+  ```
+  resource "aws_db_instance" "wordpress_rds" {
   allocated_storage      = var.allocated_storage
   engine                 = "mysql"
   engine_version         = var.engine_version
@@ -383,15 +378,11 @@ resource "aws_db_subnet_group" "rds_subnet" {
   description = "Subnet group for RDS instance"
   subnet_ids  = var.private_subnet_ids
 }
+
 ```
-
----
-
-#### `modules/rds/variables.tf`
-
-Define input variables to customize the RDS configuration.
-
-```hcl
+    
+     - **`variables.tf`**: Defines customizable variables.
+```
 variable "allocated_storage" {
   type        = number
   description = "Allocated storage for the RDS instance (in GB)"
@@ -443,9 +434,9 @@ variable "vpc_id" {
   description = "VPC ID for deploying the RDS instance"
 }
 ```
-#### `modules/rds/outputs.tf`
-
-```hcl
+     
+     - **`outputs.tf`**: Outputs key information, like the RDS endpoint.
+```
 output "rds_endpoint" {
   value       = aws_db_instance.wordpress_rds.endpoint
   description = "RDS instance endpoint"
@@ -454,32 +445,34 @@ output "rds_endpoint" {
 
 ---
 
-### Step 3: Reference the RDS Module in Root `main.tf`
+### 3. **RDS Module Configuration**
 
-Add a `module` block in the root `main.tf` to call the RDS module and pass in the necessary variables.
-
-```hcl
-module "rds" {
-  source              = "./modules/rds"
-  vpc_id              = module.vpc.vpc_id
-  allocated_storage   = 20
-  engine_version      = "8.0"
-  instance_class      = "db.t3.micro"
-  db_name             = var.db_name
-  db_username         = var.db_username
-  db_password         = var.db_password
-  allowed_cidr_blocks = [module.vpc.vpc_cidr_block]
-  private_subnet_ids  = module.vpc.private_subnet_ids
-}
-```
+   - **`main.tf`**: Configures `aws_db_instance` with MySQL, security groups, subnet group, and connection properties.
+     - Security Group allows MySQL access from the webserver.
+     - **Subnet Group**: Associates RDS with private subnets.
 
 ---
 
-### Step 4: Define Database Variables in Root `variables.tf`
+### 4. **Root Module Configuration**
 
-Add database-related variables in the root `variables.tf` file to manage RDS instance configurations.
-
-```hcl
+   - **Call the RDS module in `root main.tf`**:
+     ```hcl
+     module "rds" {
+       source              = "./modules/rds"
+       vpc_id              = module.vpc.vpc_id
+       allocated_storage   = 20
+       engine_version      = "8.0"
+       instance_class      = "db.t3.micro"
+       db_name             = var.db_name
+       db_username         = var.db_username
+       db_password         = var.db_password
+       allowed_cidr_blocks = [module.vpc.vpc_cidr_block]
+       private_subnet_ids  = module.vpc.private_subnet_ids
+     }
+     ```
+### 5: Define Database Variables in Root variables.tf
+Add database-related variables in the root variables.tf file to manage RDS instance configurations.
+```
 variable "availability_zone_2" {
   description = "Second availability zone"
   type        = string
@@ -504,34 +497,24 @@ variable "db_password" {
 }
 ```
 
-```markdown
-### Step 5: Deploy the Terraform Configuration
+### 6. **Deploying the Configuration**
 
-With all configurations set, proceed to initialize and apply the Terraform setup.
-
-1. **Initialize Terraform**  
-   Run the following command in the root directory to initialize the configuration:
-   ```bash
-   terraform init
-   ```
-
-2. **Validate the Configuration**  
-   Confirm that the configuration is valid:
-   ```bash
-   terraform validate
-   ```
-
-3. **Preview the Plan**  
-   Review the resources that will be created or modified:
-   ```bash
-   terraform plan
-   ```
-
-4. **Apply the Configuration**  
-   Deploy the RDS, VPC, and EFS configurations:
-   ```bash
-   terraform apply
-   ```
+   - **Initialize**:
+     ```bash
+     terraform init
+     ```
+   - **Validate**:
+     ```bash
+     terraform validate
+     ```
+   - **Preview**:
+     ```bash
+     terraform plan
+     ```
+   - **Apply**:
+     ```bash
+     terraform apply
+     ```
    Confirm with `yes` when prompted.
 
 ---
@@ -929,73 +912,258 @@ terraform apply
 - **Auto Scaling Group**: Links ASG to the ALB’s target group.
 
 
-### 6. Auto Scaling Group
+### 6. Here's a documented step-by-step guide for implementing the Auto Scaling Group (ASG) and Application Load Balancer (ALB) in your WordPress setup on AWS using Terraform:
 
-#### Objective
-Implement Auto Scaling to automatically adjust the number of instances based on traffic load.
+---
 
-#### Steps
-1. Create an Auto Scaling group.
-2. Define scaling policies using metrics like CPU utilization.
-3. Configure launch configurations for instances.
+## Auto Scaling Group (ASG)
 
-#### Terraform Instructions
-- Write Terraform scripts to create the Auto Scaling group.
-- Set scaling policies and launch configurations.
-- Document Terraform commands for execution.
+### Objective
+To implement Auto Scaling, ensuring that the number of instances adjusts automatically based on traffic, maintaining high availability and performance.
 
-## Steps: Create an `autoscaling.tf` file in the `module/ec2`
+### Steps
 
-```hcl
-# Launch Template for WordPress Instances
-resource "aws_launch_template" "wordpress_launch_template" {
-  name_prefix   = "wordpress-launch-template"
-  image_id      = "ami-066a7fbea5161f451"  # Replace with your AMI ID
-  instance_type = "t3.micro"
+1. **Create an Auto Scaling Group**:
+   - Define an ASG that can automatically launch or terminate instances based on scaling policies.
+   - Specify the minimum, maximum, and desired capacity for the ASG.
 
-  key_name = aws_key_pair.wordpress_keypair.key_name  # Assuming the key pair is available in the root module
+2. **Define Scaling Policies**:
+   - Set up scaling policies that adjust the number of instances based on specific metrics, such as CPU utilization.
 
-  network_interfaces {
-    security_groups = [var.security_group_id]  # Security group ID passed from the main module
-    associate_public_ip_address = true         # Associates a public IP for the instances
+3. **Configure Launch Template**:
+   - Use a launch template to standardize the configurations for instances within the ASG.
+   - Include security groups, instance type, and user data for mounting EFS and installing packages.
+
+### Terraform Instructions
+
+1. **File Structure**:
+   - Add an `autoscaling.tf` file within the `module/ec2` directory.
+
+2. **Define the Launch Template**:
+
+   ```hcl
+   # Launch Template for WordPress Instances
+   resource "aws_launch_template" "wordpress_launch_template" {
+     name_prefix   = "wordpress-launch-template"
+     image_id      = "ami-066a7fbea5161f451"  # Replace with appropriate AMI ID
+     instance_type = "t3.micro"
+
+     key_name = aws_key_pair.wordpress_keypair.key_name  # Assuming key pair from root module
+
+     network_interfaces {
+       security_groups            = [var.security_group_id]
+       associate_public_ip_address = true
+     }
+
+     user_data = base64encode(templatefile("${path.module}/userdata.sh", {
+       efs_id = var.efs_id
+     }))
+
+     tags = {
+       Name = "wordpress-instance"
+     }
+   }
+   ```
+
+3. **Define the Auto Scaling Group**:
+
+   ```hcl
+   # Auto Scaling Group for WordPress Instances
+   resource "aws_autoscaling_group" "wordpress_asg" {
+     desired_capacity         = 2
+     max_size                 = 3
+     min_size                 = 1
+
+     launch_template {
+       id      = aws_launch_template.wordpress_launch_template.id
+       version = "$Latest"
+     }
+
+     vpc_zone_identifier      = var.public_subnets
+     target_group_arns        = [var.wordpress_tg_arn]
+     health_check_type        = "ELB"
+     health_check_grace_period = 300
+
+     tag {
+       key                    = "Name"
+       value                  = "wordpress-instance"
+       propagate_at_launch    = true
+     }
+   }
+   ```
+
+4. **Define Terraform Commands**:
+   - Initialize and apply the configuration:
+     ```bash
+     terraform init
+     terraform apply
+     ```
+
+---
+
+## Application Load Balancer (ALB)
+
+### Objective
+Set up an Application Load Balancer (ALB) to distribute incoming traffic evenly, ensuring high availability and fault tolerance.
+
+### Steps
+
+1. **Create an ALB**:
+   - Define an ALB to distribute traffic to instances within the ASG.
+   - Attach a security group to the ALB, allowing HTTP and HTTPS traffic.
+
+2. **Configure Listener Rules**:
+   - Set up listener rules on the ALB to route traffic to the target group associated with your instances.
+
+3. **Integrate with Auto Scaling Group**:
+   - Link the ASG to the ALB’s target group to allow traffic distribution among instances.
+
+### Terraform Instructions
+
+1. **File Structure**:
+   - Add a new module in `modules/alb` with files
+   -  **main.tf**
+```
+# Security Group for ALB
+resource "aws_security_group" "alb_sg" {
+  name_prefix = "alb-sg"
+  description = "Security group for the Application Load Balancer"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  user_data = base64encode(templatefile("${path.module}/userdata.sh", {
-    efs_id = var.efs_id
-  }))
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Application Load Balancer
+resource "aws_lb" "alb" {
+  name               = "wordpress-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb_sg.id]
+  subnets            = var.public_subnets
+
+  enable_deletion_protection = false
+  idle_timeout               = 60
 
   tags = {
-    Name = "wordpress-instance"
+    Name = "wordpress-alb"
   }
 }
 
-# Auto Scaling Group for WordPress Instances
-resource "aws_autoscaling_group" "wordpress_asg" {
-  desired_capacity        = 2                 # Adjust based on requirements
-  max_size                = 3                 # Maximum number of instances
-  min_size                = 1                 # Minimum number of instances
+# Target Group
+resource "aws_lb_target_group" "wordpress_tg" {
+  name     = "wordpress-tg"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = var.vpc_id
 
-  launch_template {
-    id      = aws_launch_template.wordpress_launch_template.id
-    version = "$Latest"
-  }
-
-  vpc_zone_identifier     = var.public_subnets  # List of public subnets from VPC
-
-  target_group_arns       = [var.wordpress_tg_arn]  # Target group ARN from ALB module
-  health_check_type       = "ELB"                    # Use load balancer for health checks
-  health_check_grace_period = 300                    # Grace period for instance health check
-
-  tag {
-    key                   = "Name"
-    value                 = "wordpress-instance"
-    propagate_at_launch   = true
+  health_check {
+    healthy_threshold   = 3
+    interval            = 30
+    path                = "/"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 3
   }
 }
 
-output "launch_template_id" {
-  value = aws_launch_template.wordpress_launch_template.id
+# Listener for HTTP
+resource "aws_lb_listener" "http_listener" {
+  load_balancer_arn = aws_lb.alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.wordpress_tg.arn
+  }
 }
+
+```
+   -  **variables.tf**
+```
+variable "vpc_id" {
+  description = "VPC ID for the load balancer"
+  type        = string
+}
+
+variable "public_subnets" {
+  description = "List of public subnets for the ALB"
+  type        = list(string)
+}
+
+```
+   -  **outputs.tf**
+```
+output "alb_dns_name" {
+  description = "DNS name of the ALB"
+  value       = aws_lb.alb.dns_name
+}
+
+
+output "wordpress_tg_arn" {
+  description = "The ARN of the WordPress Target Group"
+  value       = aws_lb_target_group.wordpress_tg.arn
+}
+
+
+output "alb_sg_id" {
+  description = "Security group ID of the ALB"
+  value       = aws_security_group.alb_sg.id  # Ensure this is the correct resource name
+}
+
+```
+
+2. **Integrate ALB Module in `main.tf` of Root Module**:
+
+   ```hcl
+   module "alb" {
+     source         = "./modules/alb"
+     vpc_id         = module.vpc.vpc_id
+     public_subnets = module.vpc.public_subnet_ids
+   }
+   ```
+
+3. **Link ALB Security Group with WordPress Instances**:
+
+   ```hcl
+   # Allow ALB to communicate with WordPress instances
+   resource "aws_security_group_rule" "allow_alb_access" {
+     type                     = "ingress"
+     from_port                = 80
+     to_port                  = 80
+     protocol                 = "tcp"
+     security_group_id        = aws_security_group.wordpress_sg.id
+     source_security_group_id = module.alb.alb_sg_id
+   }
+   ```
+
+5. **Define Terraform Commands**:
+   - Initialize and apply the configuration:
+     ```bash
+     terraform init
+     terraform apply
+     ```
+
 
 
 
