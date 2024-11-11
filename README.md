@@ -107,6 +107,7 @@ Implement a secure network with public and private subnets and use a NAT Gateway
    In the `terraform/modules/vpc` directory, create the following files:
    - `main.tf`: Main configurations for the VPC setup.
    - `variables.tf`: Defines variables for the VPC module.
+
 ---
 
 # Step 3: Configuring the VPC Module
@@ -303,8 +304,12 @@ output "private_subnet_2_id" {
   value       = aws_subnet.private_subnet_2.id
 }
 ```
-## In the root main.tf, reference the VPC module and pass the variables:
-```
+
+## Root `main.tf` - Reference the VPC Module and Pass Variables
+
+In the root `main.tf`, reference the VPC module and pass the necessary variables:
+
+```hcl
 provider "aws" {
   region = var.aws_region
 }
@@ -321,8 +326,14 @@ module "vpc" {
   availability_zone_2   = var.availability_zone_2
 }
 ```
- Create variables.tf file in the modules/vpc, and declare the same variables:
-```
+
+---
+
+## `variables.tf` in the VPC Module
+
+Create a `variables.tf` file in the `modules/vpc` directory and declare the same variables:
+
+```hcl
 variable "aws_region" {
   type = string
 }
@@ -355,42 +366,41 @@ variable "availability_zone_2" {
   type = string
 }
 ```
- 
 ---
 
 # Step 4: Initializing and Deploying the VPC
 
-1. **Initialize Terraform**  
-   Run this command in the root directory:
-   ```bash
-   terraform init
-   ```
-   
-2. **Plan the Deployment**  
-   Preview the resources to be created:
-   ```bash
-   terraform plan
-   ```
+### 1. Initialize Terraform
+Run this command in the root directory:
+```bash
+terraform init
+```
 
-3. **Apply the Configuration**  
-   Deploy the VPC, subnets, and route tables:
-   ```bash
-   terraform apply
-   ```
+### 2. Plan the Deployment
+Preview the resources to be created:
+```bash
+terraform plan
+```
 
-   Confirm with `yes` when prompted.
-
+### 3. Apply the Configuration
+Deploy the VPC, subnets, and route tables:
+```bash
+terraform apply
+```
+```
+Confirm with `yes` when prompted.
+```
 ---
 
-
+```markdown
 ### 3. AWS MySQL RDS Setup
 
 #### Security Group Architecture
-- **ALB Security Group**: Ports 80 & 443, Source = 0.0.0.0/0
-- **SSH Security Group**: Port 22, Source = Your IP Address
-- **Webserver Security Group**: Ports 80 & 443, Source = ALB and SSH Security Groups
-- **Database Security Group**: Port 3306, Source = Webserver Security Group
-- **EFS Security Group**: Ports 2049 & 22, Source = Webserver and SSH Security Groups
+- **ALB Security Group**: Allow ports 80 & 443, Source: `0.0.0.0/0`
+- **SSH Security Group**: Allow port 22, Source: Your IP Address
+- **Webserver Security Group**: Allow ports 80 & 443, Source: ALB and SSH Security Groups
+- **Database Security Group**: Allow port 3306, Source: Webserver Security Group
+- **EFS Security Group**: Allow ports 2049 & 22, Source: Webserver and SSH Security Groups
 
 #### Objective
 Deploy a managed MySQL database using Amazon RDS to store WordPress data.
@@ -400,14 +410,18 @@ Deploy a managed MySQL database using Amazon RDS to store WordPress data.
 2. Configure security groups to control access to the RDS instance.
 3. Connect WordPress to the RDS database.
 
-#### Terraform Instructions
+---
+
+### Terraform Instructions
 - Define Terraform scripts for creating the RDS instance.
 - Set up security groups and required parameters.
 - Document Terraform commands for execution.
 
+---
+
 ### Step 1: Create the Directory Structure for RDS
 
-1. In the `modules` directory, create a folder named `rds`.
+1. In the `modules` directory, create a folder named `rds`:
    ```bash
    mkdir -p modules/rds
    ```
@@ -417,11 +431,13 @@ Deploy a managed MySQL database using Amazon RDS to store WordPress data.
    - `variables.tf` – for input variables.
    - `outputs.tf` – for any output values that may be useful.
 
+---
+
 ### Step 2: Define the RDS Module Configuration
 
 #### `modules/rds/main.tf`
 
-Define the RDS instance and its security groups here.
+Define the RDS instance and its security groups:
 
 ```hcl
 resource "aws_db_instance" "wordpress_rds" {
@@ -440,12 +456,12 @@ resource "aws_db_instance" "wordpress_rds" {
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
   db_subnet_group_name   = aws_db_subnet_group.rds_subnet.name
 }
-
 resource "aws_security_group" "rds_sg" {
   name_prefix = "rds-sg"
   description = "Security group for RDS MySQL instance"
   vpc_id      = var.vpc_id  # Ensure VPC ID is passed in from main.tf
 
+  # Allow MySQL access from specified CIDR blocks
   ingress {
     from_port   = 3306
     to_port     = 3306
@@ -453,13 +469,15 @@ resource "aws_security_group" "rds_sg" {
     cidr_blocks = var.allowed_cidr_blocks
   }
 
+  # Allow SSH access (if necessary) from any IP
   ingress {
-    from_port = 22
-    to_port =22
-    protocol = "tcp"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Allow all outbound traffic
   egress {
     from_port   = 0
     to_port     = 0
@@ -469,39 +487,40 @@ resource "aws_security_group" "rds_sg" {
 }
 
 resource "aws_db_subnet_group" "rds_subnet" {
-  name       = "rds-subnet-group"
+  name        = "rds-subnet-group"
   description = "Subnet group for RDS instance"
-  subnet_ids = var.private_subnet_ids
+  subnet_ids  = var.private_subnet_ids
 }
-
 ```
+
+---
 
 #### `modules/rds/variables.tf`
 
-Define input variables for the RDS module.
+Define input variables to customize the RDS configuration.
 
 ```hcl
 variable "allocated_storage" {
   type        = number
-  description = "The allocated storage for the RDS instance in GB"
+  description = "Allocated storage for the RDS instance (in GB)"
   default     = 20
 }
 
 variable "engine_version" {
   type        = string
-  description = "The MySQL engine version for the RDS instance"
+  description = "MySQL engine version for the RDS instance"
   default     = "8.0"
 }
 
 variable "instance_class" {
   type        = string
-  description = "The instance class for the RDS instance"
+  description = "Instance class for the RDS instance"
   default     = "db.t3.micro"
 }
 
 variable "allowed_cidr_blocks" {
   type        = list(string)
-  description = "Allowed CIDR blocks for access to RDS"
+  description = "List of CIDR blocks allowed to access the RDS instance"
 }
 
 variable "private_subnet_ids" {
@@ -510,44 +529,42 @@ variable "private_subnet_ids" {
 }
 
 variable "db_name" {
-  description = "The database name for WordPress"
   type        = string
+  description = "Database name for WordPress"
   default     = "wordpress_db"
 }
 
 variable "db_username" {
-  description = "The master username for the RDS instance"
   type        = string
+  description = "Master username for the RDS instance"
   default     = "admin"
 }
 
 variable "db_password" {
-  description = "The master password for the RDS instance"
   type        = string
+  description = "Master password for the RDS instance"
   sensitive   = true
 }
 
 variable "vpc_id" {
-  description = "The VPC ID where the RDS instance will be deployed"
   type        = string
+  description = "VPC ID for deploying the RDS instance"
 }
-
 ```
-
 #### `modules/rds/outputs.tf`
-
-Define outputs for use outside of the module, such as the RDS endpoint.
 
 ```hcl
 output "rds_endpoint" {
-  value = aws_db_instance.wordpress_rds.endpoint
+  value       = aws_db_instance.wordpress_rds.endpoint
   description = "RDS instance endpoint"
 }
 ```
 
-### Step 3: Call the RDS Module from Root `main.tf`
+---
 
-In the root `main.tf`, add a new `module` block to call the RDS module and pass in necessary variables.
+### Step 3: Reference the RDS Module in Root `main.tf`
+
+Add a `module` block in the root `main.tf` to call the RDS module and pass in the necessary variables.
 
 ```hcl
 module "rds" {
@@ -561,13 +578,14 @@ module "rds" {
   db_password         = var.db_password
   allowed_cidr_blocks = [module.vpc.vpc_cidr_block]
   private_subnet_ids  = module.vpc.private_subnet_ids
-  #vpc_security_group_ids = [module.vpc.vpc_id] # Ensure security groups are in the correct VPC
 }
 ```
 
-### Step 4: Add Database Variables in Root `variables.tf`
+---
 
-In the root `variables.tf`, add variables for the database:
+### Step 4: Define Database Variables in Root `variables.tf`
+
+Add database-related variables in the root `variables.tf` file to manage RDS instance configurations.
 
 ```hcl
 variable "availability_zone_2" {
@@ -578,69 +596,78 @@ variable "availability_zone_2" {
 
 variable "db_name" {
   type        = string
-  description = "The name of the database"
+  description = "Database name for WordPress"
 }
 
-# variables.tf or terraform.tfvars
 variable "db_username" {
-  description = "The master username for the RDS instance"
+  description = "Master username for the RDS instance"
   type        = string
-  default     = "admin" # replace with your desired default, or remove this line to require input
+  default     = "admin"  # Set a default or remove for required input
 }
 
 variable "db_password" {
-  description = "The master password for the RDS instance"
+  description = "Master password for the RDS instance"
   type        = string
   sensitive   = true
 }
 ```
 
-### Step 5: Run the Terraform Commands
+```markdown
+### Step 5: Deploy the Terraform Configuration
 
-After setting up the module and variables, you can initialize and apply the configuration.
+With all configurations set, proceed to initialize and apply the Terraform setup.
 
-1. Initialize Terraform:
+1. **Initialize Terraform**  
+   Run the following command in the root directory to initialize the configuration:
    ```bash
    terraform init
    ```
 
-2. Validate the configuration:
+2. **Validate the Configuration**  
+   Confirm that the configuration is valid:
    ```bash
    terraform validate
    ```
 
-3. Review the plan:
+3. **Preview the Plan**  
+   Review the resources that will be created or modified:
    ```bash
    terraform plan
    ```
 
-4. Apply the configuration:
+4. **Apply the Configuration**  
+   Deploy the RDS, VPC, and EFS configurations:
    ```bash
    terraform apply
    ```
+   Confirm with `yes` when prompted.
 
-### 4. EFS Setup for WordPress Files
+---
+
+### Step 6: EFS Setup for WordPress Files
 
 #### Objective
-Use Amazon Elastic File System (EFS) for scalable and shared WordPress file access.
+Implement Amazon Elastic File System (EFS) to enable scalable and shared file storage for WordPress.
 
 #### Steps
-1. Create an EFS file system.
-2. Mount the EFS on WordPress instances.
-3. Configure WordPress to use the shared file system.
+1. **Create an EFS File System.**
+2. **Mount the EFS on WordPress Instances.**
+3. **Configure WordPress** to use the shared file system for persistent storage.
 
-#### Terraform Instructions
-- Write Terraform scripts to create and configure the EFS file system.
-- Define configurations to mount EFS on WordPress instances.
-- Document Terraform commands for execution.
+#### Terraform Configuration
 
-  
-**To set up the `efs` module and link it to the EC2 instance, here’s the configuration for your `module/efs/main.tf` and the required variables. This will create the EFS file system and a security group, allowing it to connect to instances within your VPC.**
+- Set up Terraform scripts to create the EFS file system and mount points.
+- Define configurations to integrate the EFS with WordPress instances.
+- Document Terraform commands for deployment and management.
 
-### `module/efs/main.tf`
+---
+
+### `modules/efs/main.tf`
+
+This file creates the EFS file system and associated mount targets in private subnets, enabling instances in your VPC to connect to the EFS.
 
 ```hcl
-# EFS file system
+# EFS File System
 resource "aws_efs_file_system" "efs" {
   lifecycle_policy {
     transition_to_ia = "AFTER_30_DAYS"
@@ -651,16 +678,19 @@ resource "aws_efs_file_system" "efs" {
   }
 }
 
-# EFS Mount Target for each private subnet
+# EFS Mount Target for each Private Subnet
 resource "aws_efs_mount_target" "efs_mount_target" {
-  count       = length(var.subnet_ids)
-  file_system_id = aws_efs_file_system.efs.id
-  subnet_id      = var.subnet_ids[count.index]
+  count           = length(var.subnet_ids)
+  file_system_id  = aws_efs_file_system.efs.id
+  subnet_id       = var.subnet_ids[count.index]
   security_groups = [var.security_group_id]
 }
 ```
 
+```markdown
 ### `module/efs/variables.tf`
+
+Define input variables for the EFS module.
 
 ```hcl
 variable "subnet_ids" {
@@ -685,72 +715,81 @@ variable "allowed_cidr_blocks" {
 }
 ```
 
+---
+
 ### `module/efs/outputs.tf`
+
+Define outputs for the EFS module.
 
 ```hcl
 output "efs_id" {
   description = "EFS File System ID"
   value       = aws_efs_file_system.efs.id
 }
-
 ```
 
-### create `module/ec2/main.tf` to reference EFS
+---
 
-In the `aws_instance` resource in your EC2 module, update the user data script to dynamically mount EFS by referencing `${module.efs.efs_id}`.
+### Referencing EFS in `module/ec2/main.tf`
 
-### `module/ec2/main.tf`
+To link EFS to EC2, update `aws_instance` with a user data script to mount EFS, using `${module.efs.efs_id}` for the EFS ID.
+
+#### `module/ec2/main.tf`
 
 ```hcl
 # Generate SSH Key Pair for EC2
 resource "tls_private_key" "wordpress" {
-    algorithm = "RSA"
-      rsa_bits  = 2048
+  algorithm = "RSA"
+  rsa_bits  = 2048
 }
 
 resource "aws_key_pair" "wordpress_keypair" {
-    key_name   = "tfkey"
-      public_key = tls_private_key.wordpress.public_key_openssh
+  key_name   = "tfkey"
+  public_key = tls_private_key.wordpress.public_key_openssh
 }
 
 # Save the private key locally
 resource "local_file" "tf_key" {
-    content  = tls_private_key.wordpress.private_key_pem
-      filename = "tfkey"
+  content  = tls_private_key.wordpress.private_key_pem
+  filename = "tfkey"
 }
 
 # Create Elastic IP for the instance (optional for public access)
 resource "aws_eip" "wordpress_eip" {
-    domain = "vpc"  # Specifies that this is for use in a VPC
+  domain = "vpc"  # Specifies that this is for use in a VPC
 }
 
 # EC2 Instance Configuration
 resource "aws_instance" "wordpress_instance" {
-    ami                         = "ami-066a7fbea5161f451"  # Replace with appropriate AMI ID
-      instance_type               = "t3.micro"
-        key_name                    = aws_key_pair.wordpress_keypair.key_name
-          vpc_security_group_ids      = [var.security_group_id]
-            subnet_id                   = var.subnet_id           # Use the passed subnet ID
-              associate_public_ip_address = true                           # Associates a public IP
+  ami                         = "ami-066a7fbea5161f451"  # Replace with appropriate AMI ID
+  instance_type               = "t3.micro"
+  key_name                    = aws_key_pair.wordpress_keypair.key_name
+  vpc_security_group_ids      = [var.security_group_id]
+  subnet_id                   = var.subnet_id  # Use the passed subnet ID
+  associate_public_ip_address = true  # Associates a public IP
 
-                # User data for EC2 instance configuration (e.g., EFS mounting)
-                  user_data = templatefile("${path.module}/userdata.sh", {
-                        efs_id = var.efs_id
-                  })
+  # User data for EC2 instance configuration (e.g., EFS mounting)
+  user_data = templatefile("${path.module}/userdata.sh", {
+    efs_id = var.efs_id
+  })
 
-                    tags = {
-                          Name = "wordpress-instance"
-                    }
+  tags = {
+    Name = "wordpress-instance"
+  }
 }
 
 # Associate Elastic IP with the instance (optional for dedicated IP)
 resource "aws_eip_association" "wordpress_eip_association" {
-    instance_id   = aws_instance.wordpress_instance.id
-      allocation_id = aws_eip.wordpress_eip.id
+  instance_id   = aws_instance.wordpress_instance.id
+  allocation_id = aws_eip.wordpress_eip.id
 }
 ```
 
+---
+
 ### `userdata.sh`
+
+User data script to mount EFS and install required packages.
 
 ```bash
 #!/bin/bash
@@ -775,13 +814,15 @@ yum install -y httpd php
 # Start and enable Apache on boot
 systemctl start httpd
 systemctl enable httpd
-
-
 ```
+
+---
 
 ### Define Variables in Root Module
 
-module's `main.tf` to add the `vpc_id` for the EFS module.
+In the root `main.tf`, configure the EFS module by passing necessary variables, including `vpc_id` and security group IDs.
+
+#### `main.tf`
 
 ```hcl
 # EFS Module Configuration
@@ -790,7 +831,7 @@ module "efs" {
   subnet_ids          = module.vpc.private_subnet_ids
   vpc_id              = module.vpc.vpc_id
   allowed_cidr_blocks = [module.vpc.vpc_cidr_block]
-  security_group_id   = aws_security_group.wordpress_sg.id # Passing SG to module
+  security_group_id   = aws_security_group.wordpress_sg.id  # Passing SG to module
 }
 ``` 
 
@@ -798,32 +839,203 @@ This setup creates an EFS file system, mounts it on the EC2 instance, and ensure
 
 ### Step 4: Document Terraform Commands
 
-Commands to deploy EFS resources:
+Use the following commands to deploy the EFS resources:
 
 ```bash
 # Initialize Terraform
 terraform init
 
 # Apply configuration to set up EFS and related resources
-terraform apply -var-file="terraform.tfvars"
+terraform apply
 ```
-
-Let me know if you'd like any adjustments or more guidance on specific parts!
+---
 
 ### 5. Application Load Balancer (ALB)
 
 #### Objective
-Set up an Application Load Balancer to evenly distribute traffic and ensure high availability.
+Set up an Application Load Balancer (ALB) to distribute traffic evenly across instances, ensuring high availability.
 
 #### Steps
 1. Create an Application Load Balancer.
 2. Configure listener rules to route traffic to instances.
 3. Integrate the ALB with the Auto Scaling Group.
 
-#### Terraform Instructions
-- Use Terraform to define ALB configurations.
-- Integrate the ALB with the Auto Scaling Group.
-- Document Terraform commands for execution.
+---
+
+### Step 1: Set Up an Application Load Balancer Module
+
+Create a new module in your `modules` directory (e.g., `modules/alb`) with the following configuration files.
+
+#### 1. **`modules/alb/main.tf`**
+
+```hcl
+# Security Group for ALB
+resource "aws_security_group" "alb_sg" {
+  name_prefix = "alb-sg"
+  description = "Security group for the Application Load Balancer"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# ALB
+resource "aws_lb" "alb" {
+  name               = "wordpress-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb_sg.id]
+  subnets            = var.public_subnets
+
+  enable_deletion_protection = false
+  idle_timeout               = 60
+
+  tags = {
+    Name = "wordpress-alb"
+  }
+}
+
+# Target Group
+resource "aws_lb_target_group" "wordpress_tg" {
+  name     = "wordpress-target-group"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = var.vpc_id
+
+  health_check {
+    path                = "/"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+  }
+}
+
+# Listener for HTTP
+resource "aws_lb_listener" "http_listener" {
+  load_balancer_arn = aws_lb.alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.wordpress_tg.arn
+  }
+}
+```
+
+#### 2. **`modules/alb/variables.tf`**
+
+```hcl
+variable "vpc_id" {
+  description = "VPC ID for the load balancer"
+  type        = string
+}
+
+variable "public_subnets" {
+  description = "List of public subnets for the ALB"
+  type        = list(string)
+}
+```
+
+#### 3. **`modules/alb/outputs.tf`**
+
+```hcl
+output "alb_dns_name" {
+  description = "DNS name of the ALB"
+  value       = aws_lb.alb.dns_name
+}
+```
+
+---
+
+### Step 2: Configure ALB Module in Your Main Terraform File
+
+In your root `main.tf` file, add the ALB module:
+
+```hcl
+module "alb" {
+  source        = "./modules/alb"
+  vpc_id        = module.vpc.vpc_id
+  public_subnets = module.vpc.public_subnet_ids
+}
+```
+
+```markdown
+### Step 3: Update Security Group for WordPress Instances
+
+Ensure your WordPress instances' security group allows traffic from the ALB’s security group:
+
+```hcl
+# Allow incoming traffic from ALB to WordPress instance
+resource "aws_security_group_rule" "allow_alb_access" {
+  type                     = "ingress"
+  from_port                = 80
+  to_port                  = 80
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.wordpress_sg.id
+  source_security_group_id = module.alb.alb_sg_id  # Replace with ALB security group
+}
+```
+
+### Step 4: Configure Auto Scaling Group with Target Group
+
+If you are using an Auto Scaling Group (ASG), add the ALB’s target group to it:
+
+```hcl
+# ALB Module Configuration
+
+# Allow incoming traffic from ALB to WordPress instance
+resource "aws_security_group_rule" "allow_alb_access" {
+  type                     = "ingress"
+  from_port                = 80
+  to_port                  = 80
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.wordpress_sg.id
+  source_security_group_id = module.alb.alb_sg_id # ALB security group ID from the alb module
+}
+
+module "alb" {
+  source         = "./modules/alb"
+  vpc_id         = module.vpc.vpc_id
+  public_subnets = module.vpc.public_subnet_ids
+}
+```
+
+### Step 5: Run Terraform Commands
+
+To apply these configurations, run the following Terraform commands:
+
+```bash
+terraform init
+terraform plan
+terraform apply
+```
+
+### Summary
+
+- **ALB Module**: Defines the ALB, target group, and listeners.
+- **Security Group Rule**: Grants ALB access to WordPress instances.
+- **Auto Scaling Group**: Links ASG to the ALB’s target group.
+
 
 ### 6. Auto Scaling Group
 
@@ -840,8 +1052,59 @@ Implement Auto Scaling to automatically adjust the number of instances based on 
 - Set scaling policies and launch configurations.
 - Document Terraform commands for execution.
 
----
+## Steps: Create an `autoscaling.tf` file in the `module/ec2`
 
-## Conclusion
+```hcl
+# Launch Template for WordPress Instances
+resource "aws_launch_template" "wordpress_launch_template" {
+  name_prefix   = "wordpress-launch-template"
+  image_id      = "ami-066a7fbea5161f451"  # Replace with your AMI ID
+  instance_type = "t3.micro"
 
-This guide provides a structured approach to deploying a scalable, secure, and cost-effective WordPress website for DigitalBoost. By following the steps above, you’ll leverage Terraform for automation and ensure high availability and fault tolerance through AWS services.
+  key_name = aws_key_pair.wordpress_keypair.key_name  # Assuming the key pair is available in the root module
+
+  network_interfaces {
+    security_groups = [var.security_group_id]  # Security group ID passed from the main module
+    associate_public_ip_address = true         # Associates a public IP for the instances
+  }
+
+  user_data = base64encode(templatefile("${path.module}/userdata.sh", {
+    efs_id = var.efs_id
+  }))
+
+  tags = {
+    Name = "wordpress-instance"
+  }
+}
+
+# Auto Scaling Group for WordPress Instances
+resource "aws_autoscaling_group" "wordpress_asg" {
+  desired_capacity        = 2                 # Adjust based on requirements
+  max_size                = 3                 # Maximum number of instances
+  min_size                = 1                 # Minimum number of instances
+
+  launch_template {
+    id      = aws_launch_template.wordpress_launch_template.id
+    version = "$Latest"
+  }
+
+  vpc_zone_identifier     = var.public_subnets  # List of public subnets from VPC
+
+  target_group_arns       = [var.wordpress_tg_arn]  # Target group ARN from ALB module
+  health_check_type       = "ELB"                    # Use load balancer for health checks
+  health_check_grace_period = 300                    # Grace period for instance health check
+
+  tag {
+    key                   = "Name"
+    value                 = "wordpress-instance"
+    propagate_at_launch   = true
+  }
+}
+
+output "launch_template_id" {
+  value = aws_launch_template.wordpress_launch_template.id
+}
+
+
+
+
