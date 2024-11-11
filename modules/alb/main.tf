@@ -26,7 +26,7 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
-# ALB
+# Application Load Balancer
 resource "aws_lb" "alb" {
   name               = "wordpress-alb"
   internal           = false
@@ -44,16 +44,18 @@ resource "aws_lb" "alb" {
 
 # Target Group
 resource "aws_lb_target_group" "wordpress_tg" {
-  name     = "wordpress-target-group"
+  name     = "wordpress-tg"
   port     = 80
   protocol = "HTTP"
   vpc_id   = var.vpc_id
 
   health_check {
-    path                = "/"
-    interval            = 30
-    timeout             = 5
     healthy_threshold   = 3
+    interval            = 30
+    path                = "/"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
     unhealthy_threshold = 3
   }
 }

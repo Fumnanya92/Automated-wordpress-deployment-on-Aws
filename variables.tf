@@ -72,11 +72,11 @@ variable "allowed_cidr_blocks" {
 
 # Declare missing variables
 #variable "public_subnets" {
- # description = "List of public subnet IDs"
-  #type        = list(string)
+# description = "List of public subnet IDs"
+#type        = list(string)
 #}
 
 #variable "wordpress_tg_arn" {
- # description = "ARN of the ALB target group for WordPress"
-  #type        = string
+# description = "ARN of the ALB target group for WordPress"
+#type        = string
 #}
