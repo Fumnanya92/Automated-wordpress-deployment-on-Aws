@@ -29,3 +29,14 @@ variable "subnet_id" {
     description = "Subnet ID to launch the instance in"
       type        = string
 }
+
+variable "wordpress_tg_arn" {
+  description = "ARN of the target group for WordPress instances"
+  type        = string
+}
+
+variable "public_subnets" {
+  description = "List of public subnet IDs for Auto Scaling Group"
+  type        = list(string)
+}
+

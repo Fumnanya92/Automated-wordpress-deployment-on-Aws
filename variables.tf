@@ -69,3 +69,14 @@ variable "allowed_cidr_blocks" {
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
+
+# Declare missing variables
+#variable "public_subnets" {
+ # description = "List of public subnet IDs"
+  #type        = list(string)
+#}
+
+#variable "wordpress_tg_arn" {
+ # description = "ARN of the ALB target group for WordPress"
+  #type        = string
+#}

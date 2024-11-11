@@ -9,6 +9,8 @@ terraform {
   }
 }
 
+
+
 # VPC Module Configuration
 module "vpc" {
   source = "./modules/vpc"
@@ -23,7 +25,7 @@ module "vpc" {
   availability_zone_2   = var.availability_zone_2
 }
 
-# Security Group Configuration
+# Security Group Configuration for WordPress and RDS instances
 resource "aws_security_group" "wordpress_sg" {
   name_prefix = "wordpress-sg"
   description = "Security group for WordPress and RDS instances"
@@ -70,6 +72,15 @@ resource "aws_security_group" "wordpress_sg" {
   }
 }
 
+# Allow incoming traffic from ALB to WordPress instance
+resource "aws_security_group_rule" "allow_alb_access" {
+  type                     = "ingress"
+  from_port                = 80
+  to_port                  = 80
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.wordpress_sg.id
+  source_security_group_id = module.alb.alb_sg_id # ALB security group ID from the alb module
+}
 
 # RDS Module Configuration
 module "rds" {
@@ -97,11 +108,20 @@ module "efs" {
 
 # EC2 Module Configuration
 module "ec2" {
-  source      = "./modules/ec2"
-  subnet_id   = module.vpc.public_subnet_1_id # Use public subnet 1 for EC2
-  vpc_id      = module.vpc.vpc_id
-  efs_id      = module.efs.efs_id
-  db_endpoint = module.rds.rds_endpoint
-  # allowed_cidr_blocks = [module.vpc.vpc_cidr_block]
+  source            = "./modules/ec2"
+  subnet_id         = module.vpc.public_subnet_1_id # Use public subnet 1 for EC2
+  vpc_id            = module.vpc.vpc_id
+  efs_id            = module.efs.efs_id
+  db_endpoint       = module.rds.rds_endpoint
   security_group_id = aws_security_group.wordpress_sg.id # Passing SG to module
+  wordpress_tg_arn  = module.alb.wordpress_tg_arn        # Pass the target group ARN
+  public_subnets    = module.vpc.public_subnet_ids       # Pass subnets here
 }
+
+# ALB Module Configuration
+module "alb" {
+  source         = "./modules/alb"
+  vpc_id         = module.vpc.vpc_id
+  public_subnets = module.vpc.public_subnet_ids
+}
+
