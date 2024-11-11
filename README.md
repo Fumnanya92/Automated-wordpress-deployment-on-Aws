@@ -634,6 +634,182 @@ Use Amazon Elastic File System (EFS) for scalable and shared WordPress file acce
 - Define configurations to mount EFS on WordPress instances.
 - Document Terraform commands for execution.
 
+  
+**To set up the `efs` module and link it to the EC2 instance, here’s the configuration for your `module/efs/main.tf` and the required variables. This will create the EFS file system and a security group, allowing it to connect to instances within your VPC.**
+
+### `module/efs/main.tf`
+
+```hcl
+# EFS file system
+resource "aws_efs_file_system" "efs" {
+  lifecycle_policy {
+    transition_to_ia = "AFTER_30_DAYS"
+  }
+
+  tags = {
+    Name = "wordpress-efs"
+  }
+}
+
+# EFS Mount Target for each private subnet
+resource "aws_efs_mount_target" "efs_mount_target" {
+  count       = length(var.subnet_ids)
+  file_system_id = aws_efs_file_system.efs.id
+  subnet_id      = var.subnet_ids[count.index]
+  security_groups = [var.security_group_id]
+}
+```
+
+### `module/efs/variables.tf`
+
+```hcl
+variable "subnet_ids" {
+  description = "List of private subnet IDs for the EFS mount targets"
+  type        = list(string)
+}
+
+variable "vpc_id" {
+  description = "VPC ID where the EFS will be created"
+  type        = string
+}
+
+variable "security_group_id" {
+  description = "Security group ID to attach to resources"
+  type        = string
+}
+
+variable "allowed_cidr_blocks" {
+  description = "CIDR blocks allowed to access EFS"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+```
+
+### `module/efs/outputs.tf`
+
+```hcl
+output "efs_id" {
+  description = "EFS File System ID"
+  value       = aws_efs_file_system.efs.id
+}
+
+```
+
+### create `module/ec2/main.tf` to reference EFS
+
+In the `aws_instance` resource in your EC2 module, update the user data script to dynamically mount EFS by referencing `${module.efs.efs_id}`.
+
+### `module/ec2/main.tf`
+
+```hcl
+# Generate SSH Key Pair for EC2
+resource "tls_private_key" "wordpress" {
+    algorithm = "RSA"
+      rsa_bits  = 2048
+}
+
+resource "aws_key_pair" "wordpress_keypair" {
+    key_name   = "tfkey"
+      public_key = tls_private_key.wordpress.public_key_openssh
+}
+
+# Save the private key locally
+resource "local_file" "tf_key" {
+    content  = tls_private_key.wordpress.private_key_pem
+      filename = "tfkey"
+}
+
+# Create Elastic IP for the instance (optional for public access)
+resource "aws_eip" "wordpress_eip" {
+    domain = "vpc"  # Specifies that this is for use in a VPC
+}
+
+# EC2 Instance Configuration
+resource "aws_instance" "wordpress_instance" {
+    ami                         = "ami-066a7fbea5161f451"  # Replace with appropriate AMI ID
+      instance_type               = "t3.micro"
+        key_name                    = aws_key_pair.wordpress_keypair.key_name
+          vpc_security_group_ids      = [var.security_group_id]
+            subnet_id                   = var.subnet_id           # Use the passed subnet ID
+              associate_public_ip_address = true                           # Associates a public IP
+
+                # User data for EC2 instance configuration (e.g., EFS mounting)
+                  user_data = templatefile("${path.module}/userdata.sh", {
+                        efs_id = var.efs_id
+                  })
+
+                    tags = {
+                          Name = "wordpress-instance"
+                    }
+}
+
+# Associate Elastic IP with the instance (optional for dedicated IP)
+resource "aws_eip_association" "wordpress_eip_association" {
+    instance_id   = aws_instance.wordpress_instance.id
+      allocation_id = aws_eip.wordpress_eip.id
+}
+```
+
+### `userdata.sh`
+
+```bash
+#!/bin/bash
+# Update packages
+yum update -y
+
+# Install necessary packages for EFS mounting
+yum install -y amazon-efs-utils nfs-utils
+
+# Create a directory to mount EFS
+mkdir -p /var/www/html
+
+# Mount EFS using the file system ID from Terraform
+mount -t efs ${efs_id}:/ /var/www/html
+
+# Make the mount persistent on reboot
+echo "${efs_id}:/ /var/www/html efs defaults,_netdev 0 0" >> /etc/fstab
+
+# Install Apache and PHP (if required for WordPress)
+yum install -y httpd php
+
+# Start and enable Apache on boot
+systemctl start httpd
+systemctl enable httpd
+
+
+```
+
+### Define Variables in Root Module
+
+module's `main.tf` to add the `vpc_id` for the EFS module.
+
+```hcl
+# EFS Module Configuration
+module "efs" {
+  source              = "./modules/efs"
+  subnet_ids          = module.vpc.private_subnet_ids
+  vpc_id              = module.vpc.vpc_id
+  allowed_cidr_blocks = [module.vpc.vpc_cidr_block]
+  security_group_id   = aws_security_group.wordpress_sg.id # Passing SG to module
+}
+``` 
+
+This setup creates an EFS file system, mounts it on the EC2 instance, and ensures the mount persists on reboot. The `efs_id` is dynamically passed into `userdata.sh` for configuration on each instance.
+
+### Step 4: Document Terraform Commands
+
+Commands to deploy EFS resources:
+
+```bash
+# Initialize Terraform
+terraform init
+
+# Apply configuration to set up EFS and related resources
+terraform apply -var-file="terraform.tfvars"
+```
+
+Let me know if you'd like any adjustments or more guidance on specific parts!
+
 ### 5. Application Load Balancer (ALB)
 
 #### Objective
