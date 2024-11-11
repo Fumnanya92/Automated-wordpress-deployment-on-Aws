@@ -25,96 +25,96 @@
 6. **EC2 Instances**: Hosts the WordPress application.
 7. **Application Load Balancer (ALB)**: Distributes incoming traffic across an auto-scaling group.
 8. **Auto Scaling Group**: Dynamically creates EC2 instances to ensure high availability.
+---
+
+Here’s a step-by-step markdown document for the tasks you've outlined.
 
 ---
 
-## Project Deliverables
+# WordPress Infrastructure Setup on AWS
 
-### Documentation:
-- Detailed documentation for each component setup
-- Explanation of security measures implemented
-
-### Demonstration:
-- Live WordPress site demo
-- Showcase auto-scaling by simulating traffic increase
+## Table of Contents
+1. [VPC Setup](#vpc-setup)
+   - [VPC Architecture](#vpc-architecture)
+   - [Objective](#objective)
+   - [Steps](#steps)
+   - [Instructions for Terraform](#instructions-for-terraform)
+2. [Public and Private Subnet with NAT Gateway](#public-and-private-subnet-with-nat-gateway)
+   - [NAT Gateway Architecture](#nat-gateway-architecture)
+   - [Objective](#objective-1)
+   - [Steps](#steps-1)
+   - [Instructions for Terraform](#instructions-for-terraform-1)
+3. [Terraform Configuration](#terraform-configuration)
+   - [main.tf](#maintf)
+   - [variables.tf](#variablestf)
+   - [outputs.tf](#outputstf)
+4. [Deploying the VPC](#deploying-the-vpc)
+   - [Initialize Terraform](#initialize-terraform)
+   - [Plan the Deployment](#plan-the-deployment)
+   - [Apply the Configuration](#apply-the-configuration)
 
 ---
 
-## Project Components
+## VPC Setup
 
-### 1. VPC Setup
+### VPC Architecture
 
-#### Architecture Overview
-- VPC with public and private subnets in 2 Availability Zones.
-- An Internet Gateway for external communication.
-- Public subnets for resources like NAT Gateway, Bastion Host, and ALB.
-- Private subnets for web servers and database servers.
+1. **VPC with public and private subnets in 2 availability zones.**
+2. **Internet Gateway** for communication between VPC instances and the Internet.
+3. **Two Availability Zones** to ensure high availability and fault tolerance.
+4. **Public Subnets** for resources like NAT Gateway, Bastion Host, and Application Load Balancer.
+5. **Private Subnets** for webservers and database servers, providing added protection.
+6. **Public Route Table** associated with public subnets, routing traffic to the Internet via the Internet Gateway.
+7. **Main Route Table** associated with the private subnets.
 
-#### Objective
+### Objective
+
 Create a Virtual Private Cloud (VPC) to isolate and secure the WordPress infrastructure.
 
-#### Steps
+### Steps
+
 1. Define IP address range for the VPC.
-2. Create VPC with both public and private subnets.
+2. Create VPC with public and private subnets.
 3. Configure route tables for each subnet.
 
-#### Terraform Instructions
-- Use Terraform to define VPC, subnets, and route tables.
+### Instructions for Terraform
+
+- Use Terraform to define the VPC, subnets, and route tables.
 - Leverage variables for customization.
 - Document Terraform commands for execution.
 
-### 2. Public and Private Subnets with NAT Gateway
+---
 
-#### Architecture Overview
-- NAT Gateway allows instances in private subnets to access the internet.
-- Private Route Table is associated with private subnets, routing traffic through the NAT Gateway.
+## Public and Private Subnet with NAT Gateway
 
-#### Objective
-Implement a secure network with public and private subnets and use a NAT Gateway for private subnet internet access.
+### NAT Gateway Architecture
 
-#### Steps
-1. Set up a public subnet for resources needing internet access.
-2. Create a private subnet for secure resources.
-3. Configure a NAT Gateway to allow private subnet internet access.
+- **NAT Gateway** enables instances in private App and Data subnets to access the internet.
+- **Private Route Table** routes traffic from private subnets to the Internet through the NAT Gateway.
 
-#### Terraform Instructions
+### Objective
+
+Implement a secure network architecture with public and private subnets, and enable internet access for the private subnet using a NAT Gateway.
+
+### Steps
+
+1. Set up a public subnet for internet-accessible resources.
+2. Create a private subnet for resources without direct internet access.
+3. Configure a NAT Gateway for internet access in private subnets.
+
+### Instructions for Terraform
+
 - Use Terraform to define subnets, security groups, and NAT Gateway.
-- Associate resources with the appropriate subnets.
+- Ensure resources are associated with the appropriate subnets.
 - Document Terraform commands for execution.
 
-
-# Step 1: Cloning the Repository
-
-1. **Clone the Repository**  
-   Start by cloning your repository to your local machine:
-   ```bash
-   git clone https://github.com/YourUsername/Automated-Wordpress-deployment-on-AWS.git
-   cd Automated-Wordpress-deployment-on-AWS
-   ```
-
 ---
 
-# Step 2: Directory and Module Structure
+## Terraform Configuration
 
-1. **Create the Directory Structure**  
-   Set up the directories for organizing Terraform configurations:
-   ```bash
-   mkdir -p terraform/modules/vpc
-   mkdir terraform/environments
-   ```
+### main.tf
 
-2. **Initialize VPC Module**  
-   In the `terraform/modules/vpc` directory, create the following files:
-   - `main.tf`: Main configurations for the VPC setup.
-   - `variables.tf`: Defines variables for the VPC module.
-
----
-
-# Step 3: Configuring the VPC Module
-
-### 1. `main.tf`
-
-Define the VPC, public and private subnets, internet gateway, NAT gateway, and route tables. This configuration isolates and secures the WordPress infrastructure.
+Define the VPC, public and private subnets, internet gateway, NAT gateway, and route tables to isolate and secure the WordPress infrastructure.
 
 ```hcl
 # vpc/main.tf
@@ -128,9 +128,7 @@ resource "aws_vpc" "wordpress_vpc" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
-  tags = {
-    Name = "wordpress-vpc"
-  }
+  tags = { Name = "wordpress-vpc" }
 }
 
 # Public Subnets
@@ -139,9 +137,7 @@ resource "aws_subnet" "public_subnet_1" {
   cidr_block        = var.public_subnet_1_cidr
   availability_zone = var.availability_zone_1
   map_public_ip_on_launch = true
-  tags = {
-    Name = "public-subnet-1"
-  }
+  tags = { Name = "public-subnet-1" }
 }
 
 resource "aws_subnet" "public_subnet_2" {
@@ -149,9 +145,7 @@ resource "aws_subnet" "public_subnet_2" {
   cidr_block        = var.public_subnet_2_cidr
   availability_zone = var.availability_zone_2
   map_public_ip_on_launch = true
-  tags = {
-    Name = "public-subnet-2"
-  }
+  tags = { Name = "public-subnet-2" }
 }
 
 # Private Subnets
@@ -159,34 +153,26 @@ resource "aws_subnet" "private_subnet_1" {
   vpc_id            = aws_vpc.wordpress_vpc.id
   cidr_block        = var.private_subnet_1_cidr
   availability_zone = var.availability_zone_1
-  tags = {
-    Name = "private-subnet-1"
-  }
+  tags = { Name = "private-subnet-1" }
 }
 
 resource "aws_subnet" "private_subnet_2" {
   vpc_id            = aws_vpc.wordpress_vpc.id
   cidr_block        = var.private_subnet_2_cidr
   availability_zone = var.availability_zone_2
-  tags = {
-    Name = "private-subnet-2"
-  }
+  tags = { Name = "private-subnet-2" }
 }
 
 # Internet Gateway
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.wordpress_vpc.id
-  tags = {
-    Name = "wordpress-igw"
-  }
+  tags = { Name = "wordpress-igw" }
 }
 
 # Public Route Table
 resource "aws_route_table" "public_rt" {
   vpc_id = aws_vpc.wordpress_vpc.id
-  tags = {
-    Name = "public-route-table"
-  }
+  tags = { Name = "public-route-table" }
 }
 
 # Route for Internet Gateway in Public Route Table
@@ -210,104 +196,44 @@ resource "aws_route_table_association" "public_subnet_2_assoc" {
 # Private Route Table (Main Route Table)
 resource "aws_route_table" "private_rt" {
   vpc_id = aws_vpc.wordpress_vpc.id
-  tags = {
-    Name = "private-route-table"
-  }
+  tags = { Name = "private-route-table" }
 }
 ```
 
-### 2. `variables.tf`
+### variables.tf
 
-Define variables for the VPC configuration to allow customization.
+Define variables for VPC configuration, enabling customization.
 
 ```hcl
 # vpc/variables.tf
 
-variable "aws_region" {
-  description = "AWS region for deployment"
-  type        = string
-  default     = "us-west-2"
-}
-
-variable "vpc_cidr" {
-  description = "CIDR block for the VPC"
-  type        = string
-  default     = "10.0.0.0/16"
-}
-
-variable "public_subnet_1_cidr" {
-  description = "CIDR block for public subnet 1"
-  type        = string
-  default     = "10.0.1.0/24"
-}
-
-variable "public_subnet_2_cidr" {
-  description = "CIDR block for public subnet 2"
-  type        = string
-  default     = "10.0.2.0/24"
-}
-
-variable "private_subnet_1_cidr" {
-  description = "CIDR block for private subnet 1"
-  type        = string
-  default     = "10.0.3.0/24"
-}
-
-variable "private_subnet_2_cidr" {
-  description = "CIDR block for private subnet 2"
-  type        = string
-  default     = "10.0.4.0/24"
-}
-
-variable "availability_zone_1" {
-  description = "First availability zone"
-  type        = string
-  default     = "us-west-2a"
-}
-
-variable "availability_zone_2" {
-  description = "Second availability zone"
-  type        = string
-  default     = "us-west-2b"
-}
+variable "aws_region" { default = "us-west-2" }
+variable "vpc_cidr" { default = "10.0.0.0/16" }
+variable "public_subnet_1_cidr" { default = "10.0.1.0/24" }
+variable "public_subnet_2_cidr" { default = "10.0.2.0/24" }
+variable "private_subnet_1_cidr" { default = "10.0.3.0/24" }
+variable "private_subnet_2_cidr" { default = "10.0.4.0/24" }
+variable "availability_zone_1" { default = "us-west-2a" }
+variable "availability_zone_2" { default = "us-west-2b" }
 ```
 
-### 3. `outputs.tf`
+### outputs.tf
 
 Output key information about the VPC and subnets for easy reference.
 
 ```hcl
 # outputs.tf
 
-output "vpc_id" {
-  description = "VPC ID"
-  value       = aws_vpc.wordpress_vpc.id
-}
-
-output "public_subnet_1_id" {
-  description = "Public Subnet 1 ID"
-  value       = aws_subnet.public_subnet_1.id
-}
-
-output "public_subnet_2_id" {
-  description = "Public Subnet 2 ID"
-  value       = aws_subnet.public_subnet_2.id
-}
-
-output "private_subnet_1_id" {
-  description = "Private Subnet 1 ID"
-  value       = aws_subnet.private_subnet_1.id
-}
-
-output "private_subnet_2_id" {
-  description = "Private Subnet 2 ID"
-  value       = aws_subnet.private_subnet_2.id
-}
+output "vpc_id" { value = aws_vpc.wordpress_vpc.id }
+output "public_subnet_1_id" { value = aws_subnet.public_subnet_1.id }
+output "public_subnet_2_id" { value = aws_subnet.public_subnet_2.id }
+output "private_subnet_1_id" { value = aws_subnet.private_subnet_1.id }
+output "private_subnet_2_id" { value = aws_subnet.private_subnet_2.id }
 ```
 
-## Root `main.tf` - Reference the VPC Module and Pass Variables
+### Root main.tf - Reference the VPC Module
 
-In the root `main.tf`, reference the VPC module and pass the necessary variables:
+In the root `main.tf`, reference the VPC module and pass the necessary variables.
 
 ```hcl
 provider "aws" {
@@ -329,70 +255,36 @@ module "vpc" {
 
 ---
 
-## `variables.tf` in the VPC Module
+## Deploying the VPC
 
-Create a `variables.tf` file in the `modules/vpc` directory and declare the same variables:
+### Initialize Terraform
 
-```hcl
-variable "aws_region" {
-  type = string
-}
+Run the following command in the root directory:
 
-variable "vpc_cidr" {
-  type = string
-}
-
-variable "public_subnet_1_cidr" {
-  type = string
-}
-
-variable "public_subnet_2_cidr" {
-  type = string
-}
-
-variable "private_subnet_1_cidr" {
-  type = string
-}
-
-variable "private_subnet_2_cidr" {
-  type = string
-}
-
-variable "availability_zone_1" {
-  type = string
-}
-
-variable "availability_zone_2" {
-  type = string
-}
-```
----
-
-# Step 4: Initializing and Deploying the VPC
-
-### 1. Initialize Terraform
-Run this command in the root directory:
 ```bash
 terraform init
 ```
 
-### 2. Plan the Deployment
+### Plan the Deployment
+
 Preview the resources to be created:
+
 ```bash
 terraform plan
 ```
 
-### 3. Apply the Configuration
+### Apply the Configuration
+
 Deploy the VPC, subnets, and route tables:
+
 ```bash
 terraform apply
 ```
-```
+
 Confirm with `yes` when prompted.
-```
+
 ---
 
-```markdown
 ### 3. AWS MySQL RDS Setup
 
 #### Security Group Architecture
