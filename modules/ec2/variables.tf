@@ -1,7 +1,7 @@
-variable "subnet_ids" {
-  description = "The subnet IDs where the EC2 instance should be launched"
-  type        = list(string)  # Make sure it's a list of strings, not a single string
-}
+#variable "subnet_ids" {
+ # description = "The subnet IDs where the EC2 instance should be launched"
+  #type        = list(string)  # Make sure it's a list of strings, not a single string
+#}
 
 
 variable "vpc_id" {
@@ -22,4 +22,10 @@ variable "db_endpoint" {
 variable "security_group_id" {
   description = "Security group ID to attach to resources"
   type        = string
+}
+
+# ec2/variables.tf
+variable "subnet_id" {
+    description = "Subnet ID to launch the instance in"
+      type        = string
 }
